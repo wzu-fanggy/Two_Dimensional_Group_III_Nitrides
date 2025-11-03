@@ -1,0 +1,45 @@
+ SYSTEM =  qvasp 
+
+INCAR-basic
+   PREC   = Normal
+   ENCUT  = 500 eV
+   NELMIN= 5
+   LREAL = F    ## set to Auto if the atomic number > 20
+
+#   ALGO = Fast
+   EDIFF  = 1E-5
+#  ISMEAR = 0
+
+   SIGMA = 0.2
+
+#   LDAU=.TRUE.  ## For LDA + U set
+#   LDAUTYPE=2
+#   LDAUL=2 -1
+#   LDAUU=3  0
+#   LDAUJ=0  0
+
+   ISPIN = 1    ## For magnetism set
+#  MAGMOM = 3*1
+   NCORE = 2     ## Important to reduce calculate time, equal sqrt(cpu cores)
+ 
+Molecular Dynamics
+   NSW = 10000
+   IBRION = 0
+   POTIM = 1     Time step: fs
+   ISYM=0
+
+   LCHARG = .FALSE.
+   LWAVE  =  F
+
+   NBLOCK= 1
+   KBLOCK=50
+   TEBEG = 500   Start temperature
+   TEEND=500     End temperature 
+   SMASS=1  ! NVT
+MDALGO=2
+
+#Machine learning paramters
+ML_LMLFF = .TRUE.
+ML_ISTART = 0
+#ML_MB = 3000
+#ML_MCONF=3000null
