@@ -1,0 +1,82 @@
+# graphane : Calculating the stress vs strain at a fixed temperature. Refer: https://www.linkedin.com/pulse/how-perform-uniaxial-tensile-tests-graphene-sample-lammps-dewapriya/ for the whole example
+
+##---------------INITIALIZATION-------------------------------
+
+units           metal
+dimension	3
+boundary        p p f
+atom_style      atomic
+newton		on
+
+##---------------ATOM DEFINITION------------------------------
+
+#neighbor        2.0 bin
+#neigh_modify    every 10 delay 0 check no
+
+read_data	BN4096.data
+mass 1 10.811  # B
+mass 2 14.007  # N
+
+pair_style	deepmd BNcompress.pb
+pair_coeff  	* *	
+
+##---------------SETTINGS-------------------------------------
+
+timestep        0.001
+variable        ts equal 0.001
+
+#compute         1 all stress/atom NULL
+compute 1 all centroid/stress/atom NULL
+compute         2 all reduce sum c_1[1] c_1[2]
+
+variable        Lx equal lx
+variable        Ly equal ly
+variable        Lz equal lz
+variable        Vol equal vol
+
+variable        thickn equal 6.4
+
+fix		1 all npt temp 300 300 0.05 x 0 0 0.5 y 0 0 0.5
+
+#-mmmmmmmmmmmmm-- fix temp to 300 with temperature damping of 0.05; x and y are external stress tensor component: starts from 0 to 0.5 bars
+
+thermo		2000
+
+##---------------RELAXATION------------------------------------
+
+run		50000
+
+##---------------DEFORMATION-----------------------------------
+
+unfix		1
+reset_timestep	0
+
+fix		1 all npt temp 300 300 0.05 x 0 0 0.5
+
+fix             2 all ave/time 1 100 100 c_2[1] c_2[2]
+fix             3 all ave/time 1 100 100 v_Lx v_Ly v_Lz v_Vol
+
+variable        srate equal 1.0e8
+variable        srate1 equal "v_srate / 1.0e12"
+
+fix		4 all deform 1 y erate ${srate1} units box remap x
+run		100
+
+##---------------THERMO-OUTPUTS--------------------------------
+
+variable        CorVol equal f_3[4]*v_thickn/(f_3[3])
+variable        ConvoFac equal 1/1.0e4
+variable        sigmaxx equal f_2[1]*v_ConvoFac/v_CorVol
+variable        sigmayy equal f_2[2]*v_ConvoFac/v_CorVol
+
+variable        StrainPerTs equal v_srate1*v_ts
+variable   	strain equal v_StrainPerTs*step
+thermo		1000
+thermo_style	custom step temp v_strain v_sigmaxx v_sigmayy pe ke lx ly vol
+thermo_modify lost ignore
+fix ss all print 500 "${strain} ${sigmayy}" file strain_stress.dat screen no
+
+##---------------DEFORMATION-----------------------------------
+
+dump		1 all atom 5000 tensile_test.lammpstrj
+run		3000000
